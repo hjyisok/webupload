@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="keywords" content="文件上传，图片上传" />
+<meta name="description" content="Helloweba演示平台，演示XHTML、CSS、jquery、PHP案例和示例" />
+<title>演示：功能强大的上传控件 WebUploader</title>
+<link rel="stylesheet" href="//cdn.bootcss.com/bootstrap/3.3.5/css/bootstrap.min.css">
+<link rel="stylesheet" type="text/css" href="../../css/demo.css" />
+<link rel="stylesheet" type="text/css" href="css/webuploader.css">
+<link rel="stylesheet" type="text/css" href="css/style.css">
+<style>
+.demo{min-width:360px;margin:30px auto;padding:10px 20px}
+.demo h3{line-height:40px; font-weight: bold;}
+.file-item{float: left; position: relative; width: 110px;height: 110px; margin: 0 20px 20px 0; padding: 4px;}
+.file-item .info{overflow: hidden;}
+.uploader-list{width: 100%; overflow: hidden;}
+</style>
+</head>
+<body>
+
+<input type="text" id="path" value=""/>
+
+            <div id="uploadfile">
+                <!--用来存放文件信息-->
+                <div id="thelist" class="uploader-list"></div>
+                <div class="form-group form-inline">
+                    <div id="picker" style="float:left">选择文件</div> &nbsp;
+                    <button id="ctlBtn" class="btn btn-default" style="padding:8px 15px;">开始上传</button>
+                </div>
+            </div>
+
+        <div id="dndArea" >
+
+        </div>
+
+
+
+<script src="http://cdn.bootcss.com/jquery/1.12.4/jquery.min.js"></script>
+<script type="text/javascript" src="js/webuploader.min.js"></script>
+<!--<script type="text/javascript" src="js/upload.js"></script>-->
+<script>
+$(function(){
+	var $list = $('#thelist'),
+        $btn = $('#ctlBtn');
+ 
+    var uploader = WebUploader.create({
+      resize: false, // 不压缩image     
+      swf: 'js/uploader.swf', // swf文件路径
+      server: 'upload.php', // 文件接收服务端。
+      pick: '#picker', // 选择文件的按钮。可选
+      chunked: true, //是否要分片处理大文件上传
+      chunkSize:5*1024*1024, //分片上传，每片2M，默认是5M
+      auto: false, //选择文件后是否自动上传
+      chunkRetry : 2, //如果某个分片由于网络问题出错，允许自动重传次数
+      fileSingleSizeLimit:1024*1024*1024,
+      fileNumLimit:2,
+      duplicate:true,
+      runtimeOrder: 'html5,flash',
+       accept: {
+         title: '压缩文件',
+         extensions: 'zip',
+         mimeTypes: 'application/zip'
+       }
+    });
+    uploader.on("error",function (type) {
+        if (type == "Q_TYPE_DENIED") {
+            alert("请上传zip压缩的文件");
+        } else if (type == "F_EXCEED_SIZE") {
+            alert("文件大小不能超过1G");
+        }else if (type == "Q_EXCEED_NUM_LIMIT") {
+            alert("文件最多上传2个");
+        }else{
+            alert("其他错误：："+type)
+        }
+    })
+    // 当有文件被添加进队列的时候
+    uploader.on( 'fileQueued', function( file ) {
+        $list.append( '<div id="' + file.id + '" class="item">' +
+            '<h4 class="info">' + file.name + '</h4>' +
+            '<p class="state">等待上传...</p>' +
+        '</div>' );
+    });
+    // 文件上传过程中创建进度条实时显示。
+    uploader.on( 'uploadProgress', function( file, percentage ) {
+        var $li = $( '#'+file.id ),
+            $percent = $li.find('.progress .progress-bar');
+
+        // 避免重复创建
+        if ( !$percent.length ) {
+            $percent = $('<div class="progress progress-striped active">' +
+              '<div class="progress-bar" role="progressbar" style="width: 0%">' +
+              '</div>' +
+            '</div>').appendTo( $li ).find('.progress-bar');
+        }
+
+        $li.find('p.state').text('上传中');
+
+        $percent.css( 'width', percentage * 100 + '%' );
+    });
+    // 文件上传成功
+    uploader.on( 'uploadSuccess', function( file,response ) {
+        console.log(response.filePaht);
+        $( '#'+file.id ).find('p.state').text('已上传');
+    });
+    // 文件上传失败，显示上传出错
+    uploader.on( 'uploadError', function( file ) {
+        $( '#'+file.id ).find('p.state').text('上传出错');
+    });
+    // 完成上传完
+    uploader.on( 'uploadComplete', function( file ) {
+        $( '#'+file.id ).find('.progress').fadeOut();
+    });
+
+    $btn.on('click', function () {
+            var path=$("#path").val();
+            if(path==''){
+                alert('路径不正确');
+                return false;
+            }
+            if ($(this).hasClass('disabled')) {
+                return false;
+            }
+            uploader.options.formData.path = path;
+            uploader.upload();
+
+        });
+});
+
+</script>
+</body>
+</html>

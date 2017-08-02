@@ -4,10 +4,7 @@ class upload
 {
     function check(){
         $token=$_POST['token']?$_POST['token']:'';
-        if($token ==='6D55016540C384837CF116550E666950')
-            echo 1;
-        echo 0;
-
+        echo $token ==='6D55016540C384837CF116550E666950'?1:0;
     }
     function index()
     {

@@ -106,9 +106,8 @@ class upload
         if ($done) {
             $pathInfo = pathinfo($fileName);
             $hashStr = substr(md5(time() . $pathInfo['basename']), 8, 16);
-//            $hashName = time() . $hashStr . '.' . $pathInfo['extension'];
-//            $hashName = $fileName;
-            $uploadPath = $uploadDir . DIRECTORY_SEPARATOR . $fileName;
+            $hashName = time() . $hashStr . '.' . $pathInfo['extension'];
+            $uploadPath = $uploadDir . DIRECTORY_SEPARATOR . $hashName;
 
             if (!$out = @fopen($uploadPath, "wb")) {
                 die('{"jsonrpc" : "2.0", "error" : {"code": 102, "message": "Failed to open output stream."}, "id" : "id"}');
@@ -127,11 +126,21 @@ class upload
                 flock($out, LOCK_UN);
             }
             @fclose($out);
+
+            $zip=new ZipArchive;//新建一个ZipArchive的对象
+
+            if($zip->open($uploadPath)===TRUE){
+                $zip->extractTo($uploadDir);//假设解压缩到在当前路径下images文件夹内
+                $zip->close();//关闭处理的zip文件
+                @unlink($uploadPath);
+            }
+
             $response = ['success' => true, 'oldName' => $oldName, 'filePaht' => $uploadPath, 'fileSuffixes' => $pathInfo['extension']];
             die(json_encode($response));
         }
 
         // Return Success JSON-RPC response
+
         die('{"jsonrpc" : "2.0", "result" : null, "id" : "id"}');
     }
 }

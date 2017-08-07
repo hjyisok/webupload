@@ -104,10 +104,10 @@ class upload
         }
 
         if ($done) {
-            $pathInfo = pathinfo($fileName);
-            $hashStr = substr(md5(time() . $pathInfo['basename']), 8, 16);
-            $hashName = time() . $hashStr . '.' . $pathInfo['extension'];
-            $uploadPath = $uploadDir . DIRECTORY_SEPARATOR . $hashName;
+//            $pathInfo = pathinfo($fileName);
+//            $hashStr = substr(md5(time() . $pathInfo['basename']), 8, 16);
+//            $hashName = time() . $hashStr . '.' . $pathInfo['extension'];
+            $uploadPath = $uploadDir . DIRECTORY_SEPARATOR . $fileName;
 
             if (!$out = @fopen($uploadPath, "wb")) {
                 die('{"jsonrpc" : "2.0", "error" : {"code": 102, "message": "Failed to open output stream."}, "id" : "id"}');

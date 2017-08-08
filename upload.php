@@ -6,6 +6,82 @@ class upload
         $token=$_POST['token']?$_POST['token']:'';
         echo $token ==='6D55016540C384837CF116550E666950'?1:0;
     }
+
+    function getPath(){
+        $token=$_POST['token']?$_POST['token']:'';
+        $page=intval($_POST['page'])?intval($_POST['page']):1;
+        $type=intval($_POST['type'])?intval($_POST['type']):1;
+        if($token !=='6D55016540C384837CF116550E666950'){
+            die('请先登录');
+        }
+        $basedir = $type==1?'/data/image_server/images/hawkeye':'/data/image_server/task/hawkeye';
+        $dirArray=$this->get_all_file($basedir);
+        $start=($page-1)*20;
+        $data['total']=count($dirArray);
+        $data['list']=array_slice($dirArray,$start,20);
+        $data['page']=$page;
+        $data['maxpage']=ceil($data['total']/20);
+        echo json_encode($data);
+    }
+    //删除目录
+    function delPath(){
+        $token=$_POST['token']?$_POST['token']:'';
+        $path=trim($_POST['path'])?trim($_POST['path']):'';
+        $type=intval($_POST['type'])?intval($_POST['type']):1;
+        if($token !=='6D55016540C384837CF116550E666950'){
+            die('请先登录');
+        }
+        echo $this->deldir($path);
+    }
+    function deldir($path) {
+        $handle = opendir($path);
+        while (($item = readdir($handle)) !== false) {
+            if ($item == '.' || $item == '..') continue;
+            $_path = $path . '/' . $item;
+            if (is_file($_path)) unlink($_path);
+            if (is_dir($_path)) rmdirs($_path);
+        }
+        closedir($handle);
+        //删除当前文件夹：
+        if(rmdir($path)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    //递归获取指定目录下的目录
+    function get_all_file($path){
+        if($path != '.' && $path != '..' && is_dir($path)){
+            $files = [];
+            if($handle = opendir($path)){
+                while($file = readdir($handle)){
+                    if($file != '.' && $file != '..'){
+                        $file_name = ($path . DIRECTORY_SEPARATOR . $file);
+                        if(is_dir($file_name)){
+                            $files[$file] = $this->get_all_file($file_name);
+                        }else{
+                            $files[] = $path;
+                        }
+                    }
+                }
+            }
+        }
+        closedir($handle);
+        return $this->multiArrayToOne($files);
+    }
+    //多维数组转一维数组，并去重
+    public function multiArrayToOne($multi)
+    {
+        $arr = array();
+        foreach ($multi as $key => $val) {
+            if (is_array($val)) {
+                $arr = array_merge($arr, $this->multiArrayToOne($val));
+            } else {
+                $arr[] = $val;
+            }
+        }
+        return array_unique($arr);
+    }
     function index()
     {
         header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
@@ -26,10 +102,10 @@ class upload
         }
         @set_time_limit(10 * 60);
         $PATH = $_REQUEST["path"];
-//        $base_path='images';
-        $targetDir = 'uploads' . DIRECTORY_SEPARATOR . 'file_material_tmp';
-        $uploadDir = trim($PATH, '/');
-
+        $type =intval($_REQUEST["typeimg"])?intval($_REQUEST["typeimg"]) :1;
+        $basepath = $type==1?'images/hawkeye/':'task/hawkeye/';
+        $targetDir = 'webupload' . DIRECTORY_SEPARATOR . 'file_material_tmp';
+        $uploadDir = $basepath.trim($PATH, '/');
         $cleanupTargetDir = true; // Remove old files
         $maxFileAge = 5 * 3600; // Temp file age in seconds
         // Create target dir
@@ -102,12 +178,11 @@ class upload
                 break;
             }
         }
-
         if ($done) {
-//            $pathInfo = pathinfo($fileName);
-//            $hashStr = substr(md5(time() . $pathInfo['basename']), 8, 16);
-//            $hashName = time() . $hashStr . '.' . $pathInfo['extension'];
-            $uploadPath = $uploadDir . DIRECTORY_SEPARATOR . $fileName;
+            $pathInfo = pathinfo($fileName);
+            $hashStr = substr(md5(time() . $pathInfo['basename']), 8, 16);
+            $hashName = time() . $hashStr . '.' . $pathInfo['extension'];
+            $uploadPath = $uploadDir . DIRECTORY_SEPARATOR . $hashName;
 
             if (!$out = @fopen($uploadPath, "wb")) {
                 die('{"jsonrpc" : "2.0", "error" : {"code": 102, "message": "Failed to open output stream."}, "id" : "id"}');
@@ -127,14 +202,27 @@ class upload
             }
             @fclose($out);
 
-            $zip=new ZipArchive;//新建一个ZipArchive的对象
-
-            if($zip->open($uploadPath)===TRUE){
-                $zip->extractTo($uploadDir);//假设解压缩到在当前路径下images文件夹内
-                $zip->close();//关闭处理的zip文件
+            if($pathInfo['extension']=='zip'){
+                $zip=new ZipArchive;
+                if($zip->open($uploadPath)===TRUE){
+                    $zip->extractTo($uploadDir);
+                    $zip->close();
+                    @unlink($uploadPath);
+                }
+            }elseif ($pathInfo['extension']=='gz'){
+                include_once ('Archive/Tar.php');
+                $tar_object = new Archive_Tar($uploadPath);
+                $tar_object->extract($uploadDir, true);
+                @unlink($uploadPath);
+            }elseif ($pathInfo['extension']=='rar'){
+                $rar_file = rar_open($uploadPath) or die("Can't open Rar archive");
+                $entries = rar_list($rar_file);
+                foreach ($entries as $entry) {
+                    $entry->extract($uploadDir); /*/dir/extract/to/換成其他路徑即可*/
+                }
+                rar_close($rar_file);
                 @unlink($uploadPath);
             }
-
             $response = ['success' => true, 'oldName' => $oldName, 'filePaht' => $uploadPath, 'fileSuffixes' => $pathInfo['extension']];
             die(json_encode($response));
         }

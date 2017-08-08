@@ -5,11 +5,11 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="keywords" content="文件上传，图片上传" />
-    <meta name="description" content="Helloweba演示平台，演示XHTML、CSS、jquery、PHP案例和示例" />
+    <meta name="description" content="文件上传，图片上传" />
     <title>演示：功能强大的上传控件 WebUploader</title>
-    <link rel="stylesheet" href="/webupload/css/bootstrap.min.css">
-    <link rel="stylesheet" type="text/css" href="/webupload/css/webuploader.css">
-    <link rel="stylesheet" type="text/css" href="/webupload/css/style.css">
+    <link rel="stylesheet" href="webupload/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="webupload/css/webuploader.css">
+    <link rel="stylesheet" type="text/css" href="webupload/css/style.css">
     <style>
         .demo{min-width:360px;margin:30px auto;padding:10px 20px}
         .demo h3{line-height:40px; font-weight: bold;}
@@ -19,8 +19,8 @@
     </style>
 </head>
 <body>
+<button id="close" class="btn btn-close" style="float: left">关闭</button>
 <div class="container">
-
     <div class="row main">
         <h2 class="top_title">文件上传控件</h2>
         <div class="demo">
@@ -46,8 +46,8 @@
 
 </div>
 
-<script src="/webupload/js/jquery.min.js"></script>
-<script src="/webupload/js/webuploader.min.js"></script>
+<script src="webupload/js/jquery.min.js"></script>
+<script src="webupload/js/webuploader.min.js"></script>
 <script>
     $(function () {
         $.ajax( {
@@ -78,7 +78,7 @@
 
         var uploader = WebUploader.create({
             resize: false, // 不压缩image
-            swf: '/webupload/js/uploader.swf', // swf文件路径
+            swf: 'webupload/js/uploader.swf', // swf文件路径
             server: '/upload.php', // 文件接收服务端。
             pick: '#picker', // 选择文件的按钮。可选
             chunked: true, //是否要分片处理大文件上传
@@ -86,22 +86,23 @@
             auto: false, //选择文件后是否自动上传
             chunkRetry : 2, //如果某个分片由于网络问题出错，允许自动重传次数
             fileSingleSizeLimit:1024*1024*1024,
-            fileNumLimit:2,
+            fileNumLimit:1,
             duplicate:true,
             runtimeOrder: 'html5,flash',
             accept: {
-                title: '压缩文件',
-                extensions: 'zip,txt',
-                mimeTypes: 'application/zip,text/plain'
+                title: 'file',
+                extensions: 'zip,tar,rar,tar.gz',
+                mimeTypes: '.zip,.tar,.rar,.tar.gz'
+
             }
         });
         uploader.on("error",function (type) {
             if (type == "Q_TYPE_DENIED") {
-                alert("请上传txt,zip压缩的文件");
+                alert("请上传压缩文件");
             } else if (type == "F_EXCEED_SIZE") {
                 alert("文件大小不能超过1G");
             }else if (type == "Q_EXCEED_NUM_LIMIT") {
-                alert("文件最多上传2个");
+                alert("文件最多上传1个");
             }else{
                 alert("其他错误：："+type)
             }
@@ -154,8 +155,13 @@
                 return false;
             }
             uploader.options.formData.path = path;
+            uploader.options.formData.typeimg=getUrlParam('type');
             uploader.upload();
 
+        });
+        //查询按钮事件
+        $("#close").on("click", function () {
+            parent.window.location.reload();
         });
     });
 </script>

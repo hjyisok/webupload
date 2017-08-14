@@ -6,6 +6,24 @@ class upload
         $token=$_POST['token']?$_POST['token']:'';
         echo $token ==='6D55016540C384837CF116550E666950'?1:0;
     }
+    //查看上传路径是否存在
+    function checkdir(){
+        $token=$_POST['token']?$_POST['token']:'';
+        $path=$_POST['path']?$_POST['path']:'';
+        $type=$_POST['type']?$_POST['type']:1;
+
+        if($token !=='6D55016540C384837CF116550E666950'){
+            echo true;
+        }
+        $basepath = $type==1?'images/hawkeye/':'task/hawkeye/';
+        $uploadDir = $basepath.trim($path, '/');
+        if(is_dir($uploadDir)){
+            echo 1;
+        }else{
+            echo 0;
+        }
+
+    }
 
     function getPath(){
         $token=$_POST['token']?$_POST['token']:'';
@@ -102,10 +120,18 @@ class upload
         }
         @set_time_limit(10 * 60);
         $PATH = $_REQUEST["path"];
+        $token = $_REQUEST["token"];
+        if($token !=='6D55016540C384837CF116550E666950'){
+            die('请先登录');
+        }
         $type =intval($_REQUEST["typeimg"])?intval($_REQUEST["typeimg"]) :1;
         $basepath = $type==1?'images/hawkeye/':'task/hawkeye/';
         $targetDir = 'webupload' . DIRECTORY_SEPARATOR . 'file_material_tmp';
         $uploadDir = $basepath.trim($PATH, '/');
+        if(is_dir($uploadDir)){
+            die('{"jsonrpc" : "1.0", "error" : {"code": 100, "message": "Dir is exists ."}, "id" : "id"}');
+        }
+
         $cleanupTargetDir = true; // Remove old files
         $maxFileAge = 5 * 3600; // Temp file age in seconds
         // Create target dir
@@ -149,7 +175,7 @@ class upload
 
         // Open temp file
         if (!$out = @fopen("{$filePath}_{$chunk}.parttmp", "wb")) {
-            die('{"jsonrpc" : "2.0", "error" : {"code": 102, "message": "Failed to open output stream."}, "id" : "id"}');
+            die('{"jsonrpc" : "2.0", "error" : {"code": 104, "message": "Failed to open output stream."}, "id" : "id"}');
         }
         if (!empty($_FILES)) {
             if ($_FILES["file"]["error"] || !is_uploaded_file($_FILES["file"]["tmp_name"])) {
@@ -182,7 +208,7 @@ class upload
             $pathInfo = pathinfo($fileName);
             $hashStr = substr(md5(time() . $pathInfo['basename']), 8, 16);
             $hashName = time() . $hashStr . '.' . $pathInfo['extension'];
-            $uploadPath = $uploadDir . DIRECTORY_SEPARATOR . $hashName;
+            $uploadPath = $uploadDir . DIRECTORY_SEPARATOR . $fileName;
 
             if (!$out = @fopen($uploadPath, "wb")) {
                 die('{"jsonrpc" : "2.0", "error" : {"code": 102, "message": "Failed to open output stream."}, "id" : "id"}');
@@ -201,10 +227,9 @@ class upload
                 flock($out, LOCK_UN);
             }
             @fclose($out);
-
             if($pathInfo['extension']=='zip'){
                 $zip=new ZipArchive;
-                if($zip->open($uploadPath)===TRUE){
+                if($zip->open($uploadPath,ZipArchive::OVERWRITE)===TRUE){
                     $zip->extractTo($uploadDir);
                     $zip->close();
                     @unlink($uploadPath);
@@ -218,18 +243,42 @@ class upload
                 $rar_file = rar_open($uploadPath) or die("Can't open Rar archive");
                 $entries = rar_list($rar_file);
                 foreach ($entries as $entry) {
-                    $entry->extract($uploadDir); /*/dir/extract/to/換成其他路徑即可*/
+                    $entry->extract($uploadDir);
                 }
                 rar_close($rar_file);
                 @unlink($uploadPath);
             }
-            $response = ['success' => true, 'oldName' => $oldName, 'filePaht' => $uploadPath, 'fileSuffixes' => $pathInfo['extension']];
+            $nextDir=$this->checkNextDir($uploadDir);
+            $rename=true;
+            if($nextDir){
+                $newDir=$basepath.'tmp'.time().'_'.rand(1000,9999);
+                var_dump(rename($basepath.$nextDir,$newDir));
+//                rename($newname,$basepath.$uploadDir);
+//                @unlink($newname);
+            }
+            $response = ['success' => true, 'oldName' => $oldName, 'filePaht' => $uploadDir, 'fileSuffixes' => $pathInfo['extension'],'rename'=>$rename];
             die(json_encode($response));
         }
 
         // Return Success JSON-RPC response
 
         die('{"jsonrpc" : "2.0", "result" : null, "id" : "id"}');
+    }
+    //判断是不是有子目录
+    function checkNextDir($directory) {
+        if(!is_dir($directory)) {
+            return false;
+        }
+        $handle = opendir($directory);
+        while (($file = readdir($handle)) !== false) {
+            if ($file != "." && $file != "..") {
+                if(is_dir($directory.'/'.$file)) {
+                    return $directory.'/'.$file;
+                }
+            }
+        }
+        closedir($handle);
+        return false;
     }
 }
 $action = !empty($_REQUEST['action']) ? @trim($_REQUEST['action']) : 'index';

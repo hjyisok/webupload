@@ -26,7 +26,7 @@
         <div class="demo">
             <div class="form-group form-inline">
                 <span>上传路径：</span>
-                <input type="text" id="path" value=""/>
+                <input type="text" id="path" value="" onchange="checkdirpath(this.value)"/>
             </div>
             <div id="uploadfile">
                 <div id="thelist" class="uploader-list"></div>
@@ -65,12 +65,7 @@
             }
 
         });
-        //获取url中的参数
-        function getUrlParam(name) {
-            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)"); //构造一个含有目标参数的正则表达式对象
-            var r = window.location.search.substr(1).match(reg);  //匹配目标参数
-            if (r != null) return unescape(r[2]); return null; //返回参数值
-        }
+
 
 
         var $list = $('#thelist');
@@ -133,7 +128,6 @@
         });
         // 文件上传成功
         uploader.on( 'uploadSuccess', function( file,response ) {
-            console.log(response.filePaht);
             $( '#'+file.id ).find('p.state').text('已上传');
         });
         // 文件上传失败，显示上传出错
@@ -156,6 +150,7 @@
             }
             uploader.options.formData.path = path;
             uploader.options.formData.typeimg=getUrlParam('type');
+            uploader.options.formData.token=getUrlParam('token');
             uploader.upload();
 
         });
@@ -163,7 +158,39 @@
         $("#close").on("click", function () {
             parent.window.location.reload();
         });
+
     });
+    //获取url中的参数
+    function getUrlParam(name) {
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)"); //构造一个含有目标参数的正则表达式对象
+        var r = window.location.search.substr(1).match(reg);  //匹配目标参数
+        if (r != null) return unescape(r[2]); return null; //返回参数值
+    }
+    function  checkdirpath(path){
+        if(path==''){
+            alert('路径不正确');
+            return false;
+        }
+            $.ajax( {
+                url:'/upload.php?action=checkdir',
+                data:{
+                    token : getUrlParam('token'),
+                    path:path,
+                    type:getUrlParam('type')
+                },
+                type:'post',
+                dataType:'json',
+                success:function(data) {
+                    if(data){
+                        alert("路径已存在");
+                        $("#ctlBtn").attr("disabled", true);
+                    }else{
+                        $("#ctlBtn").removeAttr("disabled");
+                    }
+                }
+
+            });
+    }
 </script>
 </body>
 </html>
